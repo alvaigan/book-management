@@ -1,0 +1,10 @@
+app:
+  name: ''
+  version: ''
+  port: ''
+db:
+  host: ''
+  name: ''
+  port: 3306
+  username: ''
+  password: ''
