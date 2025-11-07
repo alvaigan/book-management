@@ -28,6 +28,9 @@ func main() {
 		switch cmd {
 		case "user_seeder":
 			seeder.UserSeed()
+		default:
+			seeder.UserSeed()
+			seeder.DummyData()
 		}
 
 		fmt.Println("Seed did run successfully")

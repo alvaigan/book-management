@@ -28,12 +28,21 @@ func main() {
 		switch cmd {
 		case "migrate":
 			if len(args) > 1 && args[1] == "fresh" {
+
+				db.Migrator().DropTable(
+					&models.User{},
+					&models.Book{},
+					&models.Author{},
+					&models.Publisher{},
+					"migrations",
+				)
+
 				m.InitSchema(func(tx *gorm.DB) error {
 					err := tx.AutoMigrate(
 						&models.User{},
 						&models.Author{},
-						&models.Book{},
 						&models.Publisher{},
+						&models.Book{},
 					)
 					if err != nil {
 						return err
@@ -41,10 +50,10 @@ func main() {
 					return nil
 				})
 			}
-
 			if err := m.Migrate(); err != nil {
 				log.Fatalf("Migration failed: %v", err)
 			}
+
 			fmt.Println("Migration did run successfully")
 		case "rollback":
 			if err := m.RollbackLast(); err != nil {

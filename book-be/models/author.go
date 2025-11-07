@@ -7,10 +7,10 @@ import (
 )
 
 type Author struct {
-	ID        uint           `gorm:"primaryKey;autoIncrement;unique;not null"`
-	Name      string         `gorm:"type:varchar(255)"`
-	BookID    uint           `gorm:"not null"`
-	CreatedAt time.Time      `gorm:"not null"`
-	UpdatedAt time.Time      `gorm:"not null"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        uint           `gorm:"primaryKey;autoIncrement;unique;not null" json:"id"`
+	Name      string         `gorm:"type:varchar(255)" json:"name"`
+	CreatedAt time.Time      `gorm:"not null" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"not null" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Books     []Book         `gorm:"foreignKey:author_id;references:id" json:"books,omitempty"`
 }

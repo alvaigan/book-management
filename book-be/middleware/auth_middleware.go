@@ -28,8 +28,12 @@ func (a *AuthMiddleware) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			var token string
 			for _, val := range header["Authorization"] {
 				splitVal := strings.Split(val, " ")
-				token = splitVal[1]
-				break
+				if len(splitVal) > 1 {
+					token = splitVal[1]
+					break
+				} else {
+					return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))
+				}
 			}
 
 			isValid, userClaims, err := utils.ValidateToken(token)
@@ -41,14 +45,20 @@ func (a *AuthMiddleware) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 				return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))
 			}
 
+			if userClaims == nil {
+				return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))
+			}
+
 			user := models.User{}
-			if err := a.DB.Where(&models.User{
-				ID: userClaims.ID,
-			}).First(&user).Error; err != nil {
+			if err := a.DB.Where(models.User{
+				ID:       userClaims.ID,
+				Username: userClaims.Username,
+			}).Debug().First(&user).Error; err != nil {
 				return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))
 			}
 
 			c.Set("user", user)
+			c.Set("token", token)
 			return next(c)
 		} else {
 			return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))

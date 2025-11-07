@@ -5,7 +5,6 @@ import (
 	"book-be/models"
 	"book-be/utils"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -110,10 +109,4 @@ func (h *Handler) Register(c echo.Context) (err error) {
 	}
 
 	return c.JSON(http.StatusOK, utils.GenerateRes("Registration succeed", nil))
-}
-
-func (h *Handler) Logout(c echo.Context) (err error) {
-	fmt.Println(c.Get("user"))
-
-	return nil
 }

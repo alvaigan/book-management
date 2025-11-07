@@ -2,6 +2,7 @@ package config
 
 import (
 	"book-be/handler"
+	"book-be/middleware"
 	"book-be/routes"
 
 	"github.com/labstack/echo/v4"
@@ -20,13 +21,15 @@ type AppConfig struct {
 func NewApp(ac *AppConfig) {
 
 	handler := handler.NewHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+	authMiddleware := middleware.NewAuthMiddleware(ac.DB)
 
 	router := routes.RouteConfig{
-		App:     ac.App,
-		DB:      ac.DB,
-		Viper:   ac.Viper,
-		Log:     ac.Log,
-		Handler: handler,
+		App:            ac.App,
+		DB:             ac.DB,
+		Viper:          ac.Viper,
+		Log:            ac.Log,
+		Handler:        handler,
+		AuthMiddleware: authMiddleware,
 	}
 
 	router.Setup()

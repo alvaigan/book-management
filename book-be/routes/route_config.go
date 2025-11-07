@@ -22,4 +22,7 @@ type RouteConfig struct {
 func (c *RouteConfig) Setup() {
 	c.GuestRoute()
 	c.AuthRoute()
+	c.BookRoute()
+	c.PublisherRoute()
+	c.AuthorRoute()
 }
