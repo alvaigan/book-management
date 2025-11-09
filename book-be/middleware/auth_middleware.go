@@ -53,7 +53,7 @@ func (a *AuthMiddleware) Auth(next echo.HandlerFunc) echo.HandlerFunc {
 			if err := a.DB.Where(models.User{
 				ID:       userClaims.ID,
 				Username: userClaims.Username,
-			}).Debug().First(&user).Error; err != nil {
+			}).First(&user).Error; err != nil {
 				return c.JSON(http.StatusUnauthorized, utils.GenerateResErr("Unauthorized", nil))
 			}
 

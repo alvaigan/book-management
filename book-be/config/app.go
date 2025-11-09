@@ -20,15 +20,26 @@ type AppConfig struct {
 
 func NewApp(ac *AppConfig) {
 
-	handler := handler.NewHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+	// handlers
+	authHandler := handler.NewAuthHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+	bookHandler := handler.NewBookHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+	authorHandler := handler.NewAuthorHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+	publisherHandler := handler.NewPublisherHandler(ac.App, ac.DB, ac.Viper, ac.Log)
+
+	// middlewares
 	authMiddleware := middleware.NewAuthMiddleware(ac.DB)
 
 	router := routes.RouteConfig{
-		App:            ac.App,
-		DB:             ac.DB,
-		Viper:          ac.Viper,
-		Log:            ac.Log,
-		Handler:        handler,
+		App:   ac.App,
+		DB:    ac.DB,
+		Viper: ac.Viper,
+		Log:   ac.Log,
+
+		AuthHandler:      authHandler,
+		BookHandler:      bookHandler,
+		AuthorHandler:    authorHandler,
+		PublisherHandler: publisherHandler,
+
 		AuthMiddleware: authMiddleware,
 	}
 

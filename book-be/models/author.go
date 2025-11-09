@@ -12,5 +12,5 @@ type Author struct {
 	CreatedAt time.Time      `gorm:"not null" json:"created_at,omitzero"`
 	UpdatedAt time.Time      `gorm:"not null" json:"updated_at,omitzero"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
-	Books     []Book         `gorm:"foreignKey:author_id;references:id" json:"books,omitempty"`
+	Books     []Book         `gorm:"foreignKey:author_id;references:id" json:"books"`
 }

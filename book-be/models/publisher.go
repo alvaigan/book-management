@@ -13,5 +13,5 @@ type Publisher struct {
 	CreatedAt time.Time      `gorm:"not null" json:"created_at,omitzero"`
 	UpdatedAt time.Time      `gorm:"not null" json:"updated_at,omitzero"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
-	Book      *Book          `gorm:"foreignKey:publisher_id;references:id" json:"book,omitempty"`
+	Books     []Book         `gorm:"foreignKey:publisher_id;references:id" json:"books"`
 }

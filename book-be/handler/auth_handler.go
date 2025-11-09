@@ -9,10 +9,28 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
-func (h *Handler) Login(c echo.Context) (err error) {
+type AuthHandler struct {
+	App   *echo.Echo
+	DB    *gorm.DB
+	Viper *viper.Viper
+	Log   *logrus.Logger
+}
+
+func NewAuthHandler(app *echo.Echo, db *gorm.DB, viper *viper.Viper, log *logrus.Logger) *AuthHandler {
+	return &AuthHandler{
+		App:   app,
+		DB:    db,
+		Viper: viper,
+		Log:   log,
+	}
+}
+
+func (h *AuthHandler) Login(c echo.Context) (err error) {
 	loginPayload := dto.Login{}
 	err = c.Bind(&loginPayload)
 	if err != nil {
@@ -55,7 +73,7 @@ func (h *Handler) Login(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, utils.GenerateRes("Login succeed", data))
 }
 
-func (h *Handler) Register(c echo.Context) (err error) {
+func (h *AuthHandler) Register(c echo.Context) (err error) {
 	registerPayload := dto.RegisterReq{}
 	err = c.Bind(&registerPayload)
 	if err != nil {

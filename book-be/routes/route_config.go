@@ -11,11 +11,16 @@ import (
 )
 
 type RouteConfig struct {
-	App            *echo.Echo
-	DB             *gorm.DB
-	Viper          *viper.Viper
-	Log            *logrus.Logger
-	Handler        *handler.Handler
+	App   *echo.Echo
+	DB    *gorm.DB
+	Viper *viper.Viper
+	Log   *logrus.Logger
+
+	AuthHandler      *handler.AuthHandler
+	BookHandler      *handler.BookHandler
+	AuthorHandler    *handler.AuthorHandler
+	PublisherHandler *handler.PublisherHandler
+
 	AuthMiddleware *middleware.AuthMiddleware
 }
 

@@ -16,15 +16,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type BookHandler struct {
+type PublisherHandler struct {
 	App   *echo.Echo
 	DB    *gorm.DB
 	Viper *viper.Viper
 	Log   *logrus.Logger
 }
 
-func NewBookHandler(app *echo.Echo, db *gorm.DB, viper *viper.Viper, log *logrus.Logger) *BookHandler {
-	return &BookHandler{
+func NewPublisherHandler(app *echo.Echo, db *gorm.DB, viper *viper.Viper, log *logrus.Logger) *PublisherHandler {
+	return &PublisherHandler{
 		App:   app,
 		DB:    db,
 		Viper: viper,
@@ -32,27 +32,31 @@ func NewBookHandler(app *echo.Echo, db *gorm.DB, viper *viper.Viper, log *logrus
 	}
 }
 
-func (h *BookHandler) GetBook(c echo.Context) (err error) {
+func (h *PublisherHandler) GetPublisher(c echo.Context) (err error) {
 	search := c.QueryParam("search")
 	page := c.QueryParam("page")
 	rowPerPage := c.QueryParam("row_per_page")
-	// publisher_id := c.QueryParam("publisher_id")
 
-	books := []models.Book{}
-	query := h.DB.Model(models.Book{})
+	publisher := []models.Publisher{}
+	query := h.DB.Preload("Books", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Author", func(db *gorm.DB) *gorm.DB {
+			return db.Select([]string{"id", "name"})
+		}).Select([]string{"id", "title", "description", "author_id", "publisher_id"})
+	}).Model(models.Publisher{})
 
 	if search != "" {
-		query = query.Where("title LIKE ?", "%"+search+"%")
+		query = query.Where("name LIKE ?", "%"+search+"%")
+		query = query.Where("city LIKE ?", "%"+search+"%")
 	}
 
 	dataCount := int64(0)
+
 	rowPerPageInt, _ := strconv.Atoi(rowPerPage)
 	if page != "" {
 		query = query.Limit(rowPerPageInt)
 	} else {
 		query = query.Limit(10)
 	}
-
 	query = query.Count(&dataCount)
 	totalPage := math.Ceil(float64(dataCount) / float64(rowPerPageInt))
 	pageInt, _ := strconv.Atoi(page)
@@ -63,7 +67,8 @@ func (h *BookHandler) GetBook(c echo.Context) (err error) {
 		}
 		query = query.Offset(offset)
 	}
-	query = query.Joins("Publisher", h.DB.Select([]string{"id", "name", "city"})).Joins("Author", h.DB.Select([]string{"id", "name"})).Debug().Find(&books)
+
+	query = query.Debug().Find(&publisher)
 	err = query.Error
 	if err != nil {
 		h.Log.Error(err)
@@ -81,12 +86,12 @@ func (h *BookHandler) GetBook(c echo.Context) (err error) {
 		nextPage = false
 	}
 
-	if pageInt <= 1 {
+	if pageInt == 1 {
 		prevPage = false
 	}
 
 	result := dto.PaginationRes{
-		Rows:        books,
+		Rows:        publisher,
 		TotalRows:   int(dataCount),
 		RowPerPage:  rowPerPageInt,
 		TotalPage:   int(totalPage),
@@ -97,7 +102,7 @@ func (h *BookHandler) GetBook(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, utils.GenerateRes("Success", result))
 }
 
-func (h *BookHandler) GetBookById(c echo.Context) (err error) {
+func (h *PublisherHandler) GetPublisherById(c echo.Context) (err error) {
 	paramId := c.Param("id")
 
 	id, err := strconv.Atoi(paramId)
@@ -105,13 +110,13 @@ func (h *BookHandler) GetBookById(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
 	}
 
-	bookDetail := models.Book{}
+	authorDetail := models.Publisher{}
 
-	err = h.DB.Preload("Author", func(db *gorm.DB) *gorm.DB {
-		return db.Select([]string{"id", "name"})
-	}).Preload("Publisher", func(db *gorm.DB) *gorm.DB {
-		return db.Select([]string{"id", "name", "city"})
-	}).Where(&models.Book{ID: uint(id)}).Debug().First(&bookDetail).Error
+	err = h.DB.Preload("Books", func(db *gorm.DB) *gorm.DB {
+		return db.Preload("Author", func(db *gorm.DB) *gorm.DB {
+			return db.Select([]string{"id", "name"})
+		}).Select([]string{"id", "title", "description", "author_id", "publisher_id"})
+	}).Where(&models.Publisher{ID: uint(id)}).First(&authorDetail).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.JSON(http.StatusNotFound, utils.GenerateResErr("Data not found!", err))
@@ -120,19 +125,19 @@ func (h *BookHandler) GetBookById(c echo.Context) (err error) {
 		}
 	}
 
-	return c.JSON(http.StatusOK, utils.GenerateRes("Success", bookDetail))
+	return c.JSON(http.StatusOK, utils.GenerateRes("Success", authorDetail))
 }
 
-func (h *BookHandler) CreateBook(c echo.Context) (err error) {
-	createPayload := dto.CreateBook{}
-	err = c.Bind(&createPayload)
+func (h *PublisherHandler) CreatePublisher(c echo.Context) (err error) {
+	createPublisherPayload := dto.CreatePublisher{}
+	err = c.Bind(&createPublisherPayload)
 	if err != nil {
 		h.Log.Error(err)
 		return c.JSON(http.StatusBadRequest, utils.GenerateResErr("Bad Request", err))
 	}
 
 	validate := validator.New()
-	err = validate.Struct(&createPayload)
+	err = validate.Struct(&createPublisherPayload)
 	if err != nil {
 		h.Log.Error(err)
 		validationErrors := utils.GetValidationErrorMsg(err.(validator.ValidationErrors))
@@ -147,19 +152,11 @@ func (h *BookHandler) CreateBook(c echo.Context) (err error) {
 		}
 	}()
 
-	book := models.Book{
-		Title:       createPayload.Title,
-		Description: createPayload.Description,
-		PublisherId: uint(createPayload.PublisherId),
+	author := models.Publisher{
+		Name: createPublisherPayload.Name,
 	}
 
-	if err := tx.Create(&book).Error; err != nil {
-		tx.Rollback()
-		h.Log.Error(err)
-		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
-	}
-
-	if err := tx.Model(models.Author{}).Where(models.Author{ID: uint(createPayload.AuthorId)}).Update("book_id", book.ID).Error; err != nil {
+	if err := tx.Create(&author).Error; err != nil {
 		tx.Rollback()
 		h.Log.Error(err)
 		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
@@ -172,12 +169,12 @@ func (h *BookHandler) CreateBook(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
 	}
 
-	data := book
+	data := author
 
-	return c.JSON(http.StatusOK, utils.GenerateRes("Book Created", data))
+	return c.JSON(http.StatusOK, utils.GenerateRes("Publisher Created", data))
 }
 
-func (h *BookHandler) UpdateBook(c echo.Context) (err error) {
+func (h *PublisherHandler) UpdatePublisher(c echo.Context) (err error) {
 	id := c.Param("id")
 	if id == "" {
 		return c.JSON(http.StatusBadRequest, utils.GenerateResErr("No one selected book", err))
@@ -189,15 +186,15 @@ func (h *BookHandler) UpdateBook(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
 	}
 
-	updateBookPayload := dto.UpdateBook{}
-	err = c.Bind(&updateBookPayload)
+	authorPayload := dto.UpdatePublisher{}
+	err = c.Bind(&authorPayload)
 	if err != nil {
 		h.Log.Error(err)
 		return c.JSON(http.StatusBadRequest, utils.GenerateResErr("Bad Request", err))
 	}
 
 	validate := validator.New()
-	err = validate.Struct(&updateBookPayload)
+	err = validate.Struct(&authorPayload)
 	if err != nil {
 		h.Log.Error(err)
 		validationErrors := utils.GetValidationErrorMsg(err.(validator.ValidationErrors))
@@ -212,16 +209,13 @@ func (h *BookHandler) UpdateBook(c echo.Context) (err error) {
 		}
 	}()
 
-	newBook := models.Book{
-		Title:       updateBookPayload.Title,
-		Description: updateBookPayload.Description,
-		AuthorId:    uint(updateBookPayload.AuthorId),
-		PublisherId: uint(updateBookPayload.PublisherId),
+	newPublisher := models.Publisher{
+		Name: authorPayload.Name,
 	}
 
-	if err := tx.Where(models.Book{
+	if err := tx.Where(models.Publisher{
 		ID: uint(idInt),
-	}).Updates(&newBook).Error; err != nil {
+	}).Updates(&newPublisher).Error; err != nil {
 		tx.Rollback()
 		h.Log.Error(err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -238,10 +232,10 @@ func (h *BookHandler) UpdateBook(c echo.Context) (err error) {
 		return c.JSON(http.StatusInternalServerError, utils.GenerateResErr("Internal Server Error", err))
 	}
 
-	return c.JSON(http.StatusOK, utils.GenerateRes("Book updated", nil))
+	return c.JSON(http.StatusOK, utils.GenerateRes("Publisher updated", nil))
 }
 
-func (h *BookHandler) DeleteBook(c echo.Context) (err error) {
+func (h *PublisherHandler) DeletePublisher(c echo.Context) (err error) {
 	id := c.Param("id")
 	if id == "" {
 		return c.JSON(http.StatusBadRequest, utils.GenerateResErr("No one selected book", err))
@@ -261,7 +255,7 @@ func (h *BookHandler) DeleteBook(c echo.Context) (err error) {
 		}
 	}()
 
-	if err := h.DB.Where(models.Book{ID: uint(idInt)}).Delete(&models.Book{}).Error; err != nil {
+	if err := h.DB.Where(models.Publisher{ID: uint(idInt)}).Delete(&models.Publisher{}).Error; err != nil {
 		tx.Rollback()
 		h.Log.Error(err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
