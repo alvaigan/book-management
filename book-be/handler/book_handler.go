@@ -5,6 +5,7 @@ import (
 	"book-be/models"
 	"book-be/utils"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -26,16 +27,6 @@ func (h *Handler) GetBook(c echo.Context) (err error) {
 		query = query.Where("title LIKE ?", "%"+search+"%")
 	}
 
-	pageInt, _ := strconv.Atoi(page)
-	if page != "" {
-		if pageInt == 1 {
-			pageInt = 0
-		} else {
-			pageInt = 0
-		}
-		query = query.Offset(pageInt)
-	}
-
 	rowPerPageInt, _ := strconv.Atoi(rowPerPage)
 	if page != "" {
 		query = query.Limit(rowPerPageInt)
@@ -43,7 +34,19 @@ func (h *Handler) GetBook(c echo.Context) (err error) {
 		query = query.Limit(10)
 	}
 
-	err = query.Debug().Find(&books).Error
+	pageInt, _ := strconv.Atoi(page)
+	if page != "" {
+		offset := 0
+		if pageInt > 1 {
+			offset = (pageInt * rowPerPageInt) + 1
+		}
+		query = query.Offset(offset)
+	}
+
+	dataCount := int64(0)
+	query = query.Joins("Publisher", h.DB.Select([]string{"id", "name", "city"})).Joins("Author", h.DB.Select([]string{"id", "name"})).Debug().Find(&books)
+	query = query.Count(&dataCount)
+	err = query.Error
 	if err != nil {
 		h.Log.Error(err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,12 +56,25 @@ func (h *Handler) GetBook(c echo.Context) (err error) {
 		}
 	}
 
+	totalPage := math.Ceil(float64(dataCount) / float64(rowPerPageInt))
+	nextPage := true
+	prevPage := true
+
+	if pageInt > int(totalPage) {
+		nextPage = false
+	}
+
+	if pageInt <= int(totalPage) {
+		prevPage = false
+	}
+
 	result := dto.PaginationRes{
 		Rows:        books,
-		TotalRows:   10,
-		RowPerPage:  10,
-		TotalPage:   10,
-		HasNextPage: true,
+		TotalRows:   int(dataCount),
+		RowPerPage:  rowPerPageInt,
+		TotalPage:   int(totalPage),
+		HasPrevPage: prevPage,
+		HasNextPage: nextPage,
 	}
 
 	return c.JSON(http.StatusOK, utils.GenerateRes("Success", result))

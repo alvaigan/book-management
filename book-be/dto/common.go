@@ -6,4 +6,5 @@ type PaginationRes struct {
 	RowPerPage  int  `json:"row_per_page"`
 	TotalPage   int  `json:"total_page"`
 	HasNextPage bool `json:"has_next_page"`
+	HasPrevPage bool `json:"has_prev_page"`
 }
